@@ -1,0 +1,265 @@
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
+
+
+def find_nonnumeric_features(x):
+    columns = []
+    for col in x.columns.values:
+        c = x[col]
+        if c.dtype == np.dtype(np.object):
+            columns.append(col)
+    return columns
+
+
+def find_null_features(x):
+    return [col for col in x.columns if x[col].count() != x[col].size]
+
+
+def delete_nonnumeric_features(x):
+    for col in find_nonnumeric_features(x):
+        del x[col]
+
+
+def estimate_time(func, *args, **kwargs):
+    t1 = datetime.now()
+    result = func(*args, **kwargs)
+    print 'Time elapsed:', datetime.now() - t1
+    # print 'C:', C, 'score:', scores.mean(), '\n'
+    return result
+
+
+def test(x, y, C, l):
+    kf = KFold(n_splits=5, random_state=42, shuffle=True)
+    cv = kf.split(x, y)
+    clf = LogisticRegression(C=C, penalty=l, random_state=142)
+    scores = cross_val_score(clf, X=x, y=y, cv=cv, scoring='roc_auc')
+    return C, scores
+
+
+def test2(cv, x, y, n=40, learning_rate=1):
+    clf = GradientBoostingClassifier(n_estimators=n, random_state=241, learning_rate=learning_rate)
+    scores = cross_val_score(clf, X=x, y=y, cv=cv, scoring='roc_auc')
+    return scores
+
+
+def fill_missing_values(x, col, method=None, val=0):
+    value = val
+    if method is 'zeroes':
+        value = 0
+    elif method is 'mean':
+        value = np.nanmean(x[col])
+    elif method is 'median':
+        value = np.nanmedian(x[col])
+
+    return x[col].fillna(value)
+
+def print_result(result):
+    it = 0
+    for k in sorted(result, key=lambda r: r[0], reverse=True):
+        print k
+        it += 1
+        if it == 10: break
+
+
+def estimate_model(x, y):
+
+    result = []
+    columns_size = x.shape[1]
+    # number_of_features = range(0, columns_size)
+
+    C, mean = estimate_time(test, C=1, l='l1', x=x, y=y.values)
+    result.append((mean, C))
+    return result
+
+def scale(x):
+    scaler = StandardScaler()
+    return scaler.fit_transform(x)
+
+
+def estimate_decision_tree(x, y, n=50):
+    tree = DecisionTreeClassifier(random_state=241)
+    tree.fit(x, y)
+    columns = zip(x.columns[:], tree.feature_importances_)
+    columns = sorted(columns, key=lambda x: -x[1])
+    print columns
+    return map(lambda x: x[0], columns[:n])
+
+
+def a():
+    # best_features = estimate_decision_tree(x, y)
+    bf = [('REST_AVG_CUR', 0.12083207461070548), ('REST_DYNAMIC_CUR_1M', 0.077691384882742062),
+          ('CLNT_SETUP_TENOR', 0.074156446848559543), ('AGE', 0.051488953744211308),
+          ('TURNOVER_DYNAMIC_CUR_1M', 0.048942139029104249), ('REST_DYNAMIC_CUR_3M', 0.037617699136848731),
+          ('SUM_TRAN_ATM_TENDENCY1M', 0.035425783574553317), ('AMOUNT_RUB_ATM_PRC', 0.034080607065679197),
+          ('TURNOVER_DYNAMIC_CUR_3M', 0.029559320333535252), ('TRANS_COUNT_ATM_PRC', 0.026398879968009561),
+          ('REST_AVG_PAYM', 0.025142187559380212), ('TRANS_CNT_TENDENCY3M', 0.025090848226080112),
+          ('CNT_TRAN_ATM_TENDENCY1M', 0.02393240387045692), ('TRANS_COUNT_SUP_PRC', 0.023800705481654964),
+          ('TRANS_AMOUNT_TENDENCY3M', 0.022977168480312671), ('AMOUNT_RUB_SUP_PRC', 0.022804714315257681),
+          ('REST_DYNAMIC_PAYM_1M', 0.021308833169247792), ('CNT_TRAN_ATM_TENDENCY3M', 0.016725906158561631),
+          ('SUM_TRAN_ATM_TENDENCY3M', 0.01540046257732572), ('AMOUNT_RUB_NAS_PRC', 0.015161321753981008),
+          ('AMOUNT_RUB_CLO_PRC', 0.015048466884605361), ('TRANS_COUNT_NAS_PRC', 0.013781423024055205),
+          ('TURNOVER_DYNAMIC_PAYM_1M', 0.012240589458449257), ('APP_REGISTR_RGN_CODE', 0.011927995276288112),
+          ('TURNOVER_PAYM', 0.011917632714675148), ('CNT_TRAN_SUP_TENDENCY1M', 0.011820121929188717),
+          ('SUM_TRAN_SUP_TENDENCY1M', 0.011211816047955698), ('SUM_TRAN_SUP_TENDENCY3M', 0.011093787793437991),
+          ('LDEAL_ACT_DAYS_ACC_PCT_AVG', 0.010868451246917205), ('REST_DYNAMIC_PAYM_3M', 0.010186685430441366),
+          ('REST_DYNAMIC_SAVE_3M', 0.0097258325744417617), ('CNT_TRAN_SUP_TENDENCY3M', 0.0083006417082657265),
+          ('TURNOVER_DYNAMIC_PAYM_3M', 0.007158435823304549), ('LDEAL_ACT_DAYS_PCT_AAVG', 0.0067020572150637081),
+          ('SUM_TRAN_AUT_TENDENCY3M', 0.005799647525082427), ('SUM_TRAN_AUT_TENDENCY1M', 0.005217311784553611),
+          ('SUM_TRAN_MED_TENDENCY3M', 0.0046222420179008062), ('CNT_TRAN_AUT_TENDENCY3M', 0.004576109800525318),
+          ('CNT_TRAN_AUT_TENDENCY1M', 0.0045319646271281544), ('CR_PROD_CNT_IL', 0.0039769050341255637),
+          ('SUM_TRAN_MED_TENDENCY1M', 0.0039065919390760201), ('CR_PROD_CNT_TOVR', 0.0037988319249775216),
+          ('SUM_TRAN_CLO_TENDENCY3M', 0.0033668942995911115), ('CNT_TRAN_MED_TENDENCY3M', 0.0032378924622760426),
+          ('DEAL_YWZ_IR_MIN', 0.003173619598047767), ('CNT_TRAN_MED_TENDENCY1M', 0.0030119466635138612),
+          ('DEAL_YWZ_IR_MAX', 0.0029970160357307247), ('CNT_TRAN_CLO_TENDENCY3M', 0.0029262609014085706),
+          ('SUM_TRAN_CLO_TENDENCY1M', 0.0028675202268365952), ('CNT_TRAN_CLO_TENDENCY1M', 0.0026270286723244344),
+          ('LDEAL_ACT_DAYS_PCT_TR3', 0.0025853736694029282), ('CR_PROD_CNT_CC', 0.0025030912387129295),
+          ('REST_DYNAMIC_FDEP_3M', 0.0024834030417399842), ('CR_PROD_CNT_PIL', 0.0023025630147168103),
+          ('REST_DYNAMIC_FDEP_1M', 0.0021726259597119116), ('LDEAL_USED_AMT_AVG_YQZ', 0.0019934246266039689),
+          ('CR_PROD_CNT_VCU', 0.0016644442137277828), ('TURNOVER_CC', 0.0015444813113053174),
+          ('LDEAL_TENOR_MIN', 0.0014830326439551503), ('LDEAL_USED_AMT_AVG_YWZ', 0.0014382126761284624),
+          ('LDEAL_TENOR_MAX', 0.0012031721643161913), ('LDEAL_YQZ_PC', 0.001170031319896774),
+          ('REST_DYNAMIC_IL_1M', 0.0011645551359111318), ('MED_DEBT_PRC_YWZ', 0.0011255622008763161),
+          ('LDEAL_ACT_DAYS_PCT_TR', 0.001000570651497542), ('DEAL_YQZ_IR_MAX', 0.00098879735957788355),
+          ('LDEAL_ACT_DAYS_PCT_CURR', 0.00093282281303102546), ('LDEAL_ACT_DAYS_PCT_TR4', 0.00088152428414349244),
+          ('REST_DYNAMIC_CC_3M', 0.00086297006463048685), ('LDEAL_AMT_MONTH', 0.00082956615343513754),
+          ('REST_DYNAMIC_IL_3M', 0.0007705754661551606), ('TURNOVER_DYNAMIC_CC_3M', 0.000759941952338376),
+          ('DEAL_GRACE_DAYS_ACC_S1X1', 0.00072523256073594566), ('DEAL_YQZ_IR_MIN', 0.00067738981461409897),
+          ('TURNOVER_DYNAMIC_IL_1M', 0.00065603689546199224), ('DEAL_GRACE_DAYS_ACC_AVG', 0.00061490631952687428),
+          ('TURNOVER_DYNAMIC_IL_3M', 0.00060247623790583285), ('CR_PROD_CNT_CCFP', 0.00056326489891100049),
+          ('CLNT_SALARY_VALUE', 0.00038627946008179732), ('MAX_PCLOSE_DATE', 0.00034755200013734483),
+          ('REST_DYNAMIC_CC_1M', 0.00033244427309994711), ('LDEAL_DELINQ_PER_MAXYWZ', 0.00031667345841175431),
+          ('TURNOVER_DYNAMIC_CC_1M', 0.00029739713835732481), ('LDEAL_DELINQ_PER_MAXYQZ', 0.00025828043833306391),
+          ('DEAL_GRACE_DAYS_ACC_MAX', 0.00023293307908366974), ('AVG_PCT_MONTH_TO_PCLOSE', 0.00023115112676074274),
+          ('MED_DEBT_PRC_YQZ', 0.00018363181916065914), ('LDEAL_YQZ_COM', 0.00016580270240534891),
+          ('LDEAL_GRACE_DAYS_PCT_MED', 0.00016092505562155393), ('LDEAL_YQZ_CHRG', 0.00015217721861772186),
+          ('AVG_PCT_DEBT_TO_DEAL_AMT', 7.5142114563002253e-05), ('PRC_ACCEPTS_A_EMAIL_LINK', 0.0),
+          ('PRC_ACCEPTS_A_POS', 0.0), ('PRC_ACCEPTS_A_TK', 0.0), ('PRC_ACCEPTS_A_AMOBILE', 0.0),
+          ('PRC_ACCEPTS_TK', 0.0),
+          ('PRC_ACCEPTS_A_MTP', 0.0), ('CNT_ACCEPTS_TK', 0.0), ('PRC_ACCEPTS_A_ATM', 0.0), ('PRC_ACCEPTS_MTP', 0.0),
+          ('CNT_ACCEPTS_MTP', 0.0)]
+    bf = map(lambda x: x[0], bf)
+    return bf
+
+
+def estimate_gboosting(x, y, bf):
+    kf = KFold(n_splits=5, random_state=42, shuffle=True)
+    cv = kf.split(x, y)
+
+    # x_cut = x[bf]
+    # x_scale = scale(x_cut)
+    return estimate_time(test2, x=x.values, y=y.values, cv=cv, n=20)
+
+
+def transform_cat_features(x):
+    x_trans = pd.get_dummies(x, columns=['CR_PROD_CNT_IL'])
+    x_trans['AMOUNT_RUB_CLO_PRC'].fillna(np.nanmedian(x_trans['AMOUNT_RUB_CLO_PRC']))
+    x_trans['PRC_ACCEPTS_A_EMAIL_LINK'] = x_trans['PRC_ACCEPTS_A_EMAIL_LINK'].fillna(1)
+
+    return x_trans
+
+
+def main():
+    data = pd.read_csv('/home/vadim/other/prolab/lab4s/alfa_train2.csv', na_values='?')
+    X = data
+    y = data.TARGET
+    del X['TARGET']
+    del X['ID']
+
+    delete_nonnumeric_features(X)
+    X = transform_cat_features(X)
+    X2 = X.fillna(0)
+
+    # 1 play with categorial features
+    # 2 and filling empty values
+    # 3 and scaller
+    # 4 feature transform
+
+    # X2 = scale(X2)
+    # bf = X2.columns
+    # print estimate_gboosting(X2, y, bf)
+
+
+    # PRC_ACCEPTS_A_EMAIL_LINK = fill_missing_values(X, 'PRC_ACCEPTS_A_EMAIL_LINK', val=1)
+    #
+    # # find_null_features(X)
+    # X2 = X.fillna(0)
+    X2 = scale(X2)
+    #
+    result = estimate_model(X2, y)
+    print_result(result)
+    #
+    # #--------
+    # X.PRC_ACCEPTS_A_EMAIL_LINK = PRC_ACCEPTS_A_EMAIL_LINK
+    # X2 = X.fillna(0)
+    # X2 = scale(X2)
+    #
+    # result = estimate_model(X2, y)
+    # print_result(result)
+
+
+if __name__ == "__main__":
+    main()
+    # for i in range(101, 102):
+    #     print 'aa'
+    #     for j in range(i + 1, 102):
+    #         number_of_features = range(i, j)
+    #         print number_of_features, i, j
+'''
+all null = 0
+(0.73420138302941051, 1)
+
+PRC_ACCEPTS_A_EMAIL_LINK null = 1, other = 0
+(0.73854979155665645, 1)
+
+all null = 0, StandardScaller
+(0.73420138302941051, 1)
+
+PRC_ACCEPTS_A_EMAIL_LINK null = 1, other = 0, StandardScaller
+(0.73848785781078019, 1)
+
+decision tree feature importance:
+[('REST_AVG_CUR', 0.12083207461070548),
+('REST_DYNAMIC_CUR_1M', 0.077691384882742062),
+('CLNT_SETUP_TENOR', 0.074156446848559543),
+('AGE', 0.051488953744211308),
+('TURNOVER_DYNAMIC_CUR_1M', 0.048942139029104249),
+('REST_DYNAMIC_CUR_3M', 0.037617699136848731),
+('SUM_TRAN_ATM_TENDENCY1M', 0.035425783574553317),
+('AMOUNT_RUB_ATM_PRC', 0.034080607065679197),
+('TURNOVER_DYNAMIC_CUR_3M', 0.029559320333535252),
+('TRANS_COUNT_ATM_PRC', 0.026398879968009561),
+('REST_AVG_PAYM', 0.025142187559380212),
+('TRANS_CNT_TENDENCY3M', 0.025090848226080112),
+('CNT_TRAN_ATM_TENDENCY1M', 0.02393240387045692),
+('TRANS_COUNT_SUP_PRC', 0.023800705481654964),
+('TRANS_AMOUNT_TENDENCY3M', 0.022977168480312671),
+('AMOUNT_RUB_SUP_PRC', 0.022804714315257681),
+('REST_DYNAMIC_PAYM_1M', 0.021308833169247792),
+('CNT_TRAN_ATM_TENDENCY3M', 0.016725906158561631), ('SUM_TRAN_ATM_TENDENCY3M', 0.01540046257732572), ('AMOUNT_RUB_NAS_PRC', 0.015161321753981008), ('AMOUNT_RUB_CLO_PRC', 0.015048466884605361), ('TRANS_COUNT_NAS_PRC', 0.013781423024055205), ('TURNOVER_DYNAMIC_PAYM_1M', 0.012240589458449257), ('APP_REGISTR_RGN_CODE', 0.011927995276288112), ('TURNOVER_PAYM', 0.011917632714675148), ('CNT_TRAN_SUP_TENDENCY1M', 0.011820121929188717), ('SUM_TRAN_SUP_TENDENCY1M', 0.011211816047955698), ('SUM_TRAN_SUP_TENDENCY3M', 0.011093787793437991), ('LDEAL_ACT_DAYS_ACC_PCT_AVG', 0.010868451246917205), ('REST_DYNAMIC_PAYM_3M', 0.010186685430441366), ('REST_DYNAMIC_SAVE_3M', 0.0097258325744417617), ('CNT_TRAN_SUP_TENDENCY3M', 0.0083006417082657265), ('TURNOVER_DYNAMIC_PAYM_3M', 0.007158435823304549), ('LDEAL_ACT_DAYS_PCT_AAVG', 0.0067020572150637081), ('SUM_TRAN_AUT_TENDENCY3M', 0.005799647525082427), ('SUM_TRAN_AUT_TENDENCY1M', 0.005217311784553611), ('SUM_TRAN_MED_TENDENCY3M', 0.0046222420179008062), ('CNT_TRAN_AUT_TENDENCY3M', 0.004576109800525318), ('CNT_TRAN_AUT_TENDENCY1M', 0.0045319646271281544), ('CR_PROD_CNT_IL', 0.0039769050341255637), ('SUM_TRAN_MED_TENDENCY1M', 0.0039065919390760201), ('CR_PROD_CNT_TOVR', 0.0037988319249775216), ('SUM_TRAN_CLO_TENDENCY3M', 0.0033668942995911115), ('CNT_TRAN_MED_TENDENCY3M', 0.0032378924622760426), ('DEAL_YWZ_IR_MIN', 0.003173619598047767), ('CNT_TRAN_MED_TENDENCY1M', 0.0030119466635138612), ('DEAL_YWZ_IR_MAX', 0.0029970160357307247), ('CNT_TRAN_CLO_TENDENCY3M', 0.0029262609014085706), ('SUM_TRAN_CLO_TENDENCY1M', 0.0028675202268365952), ('CNT_TRAN_CLO_TENDENCY1M', 0.0026270286723244344), ('LDEAL_ACT_DAYS_PCT_TR3', 0.0025853736694029282), ('CR_PROD_CNT_CC', 0.0025030912387129295), ('REST_DYNAMIC_FDEP_3M', 0.0024834030417399842), ('CR_PROD_CNT_PIL', 0.0023025630147168103), ('REST_DYNAMIC_FDEP_1M', 0.0021726259597119116), ('LDEAL_USED_AMT_AVG_YQZ', 0.0019934246266039689), ('CR_PROD_CNT_VCU', 0.0016644442137277828), ('TURNOVER_CC', 0.0015444813113053174), ('LDEAL_TENOR_MIN', 0.0014830326439551503), ('LDEAL_USED_AMT_AVG_YWZ', 0.0014382126761284624), ('LDEAL_TENOR_MAX', 0.0012031721643161913), ('LDEAL_YQZ_PC', 0.001170031319896774), ('REST_DYNAMIC_IL_1M', 0.0011645551359111318), ('MED_DEBT_PRC_YWZ', 0.0011255622008763161), ('LDEAL_ACT_DAYS_PCT_TR', 0.001000570651497542), ('DEAL_YQZ_IR_MAX', 0.00098879735957788355), ('LDEAL_ACT_DAYS_PCT_CURR', 0.00093282281303102546), ('LDEAL_ACT_DAYS_PCT_TR4', 0.00088152428414349244), ('REST_DYNAMIC_CC_3M', 0.00086297006463048685), ('LDEAL_AMT_MONTH', 0.00082956615343513754), ('REST_DYNAMIC_IL_3M', 0.0007705754661551606), ('TURNOVER_DYNAMIC_CC_3M', 0.000759941952338376), ('DEAL_GRACE_DAYS_ACC_S1X1', 0.00072523256073594566), ('DEAL_YQZ_IR_MIN', 0.00067738981461409897), ('TURNOVER_DYNAMIC_IL_1M', 0.00065603689546199224), ('DEAL_GRACE_DAYS_ACC_AVG', 0.00061490631952687428), ('TURNOVER_DYNAMIC_IL_3M', 0.00060247623790583285), ('CR_PROD_CNT_CCFP', 0.00056326489891100049), ('CLNT_SALARY_VALUE', 0.00038627946008179732), ('MAX_PCLOSE_DATE', 0.00034755200013734483), ('REST_DYNAMIC_CC_1M', 0.00033244427309994711), ('LDEAL_DELINQ_PER_MAXYWZ', 0.00031667345841175431), ('TURNOVER_DYNAMIC_CC_1M', 0.00029739713835732481), ('LDEAL_DELINQ_PER_MAXYQZ', 0.00025828043833306391), ('DEAL_GRACE_DAYS_ACC_MAX', 0.00023293307908366974), ('AVG_PCT_MONTH_TO_PCLOSE', 0.00023115112676074274), ('MED_DEBT_PRC_YQZ', 0.00018363181916065914), ('LDEAL_YQZ_COM', 0.00016580270240534891), ('LDEAL_GRACE_DAYS_PCT_MED', 0.00016092505562155393), ('LDEAL_YQZ_CHRG', 0.00015217721861772186), ('AVG_PCT_DEBT_TO_DEAL_AMT', 7.5142114563002253e-05), ('PRC_ACCEPTS_A_EMAIL_LINK', 0.0), ('PRC_ACCEPTS_A_POS', 0.0), ('PRC_ACCEPTS_A_TK', 0.0), ('PRC_ACCEPTS_A_AMOBILE', 0.0), ('PRC_ACCEPTS_TK', 0.0), ('PRC_ACCEPTS_A_MTP', 0.0), ('CNT_ACCEPTS_TK', 0.0), ('PRC_ACCEPTS_A_ATM', 0.0), ('PRC_ACCEPTS_MTP', 0.0), ('CNT_ACCEPTS_MTP', 0.0)]
+
+n=40
+0,832904632 - GradientBoostingClassifier with bestfeatures
+
+n=40
+0,832911088 - GradientBoostingClassifier wo bestfeatures !
+
+scaller, n=20, gradboosting wo best features
+0,824599612
+
+no scaller, n=20, gradboosting wo best features
+0,82458214
+
+no scaller, n=20, gradboosting wo best features, dummies:CR_PROD_CNT_IL
+0,824574918
+
+
+AMOUNT_RUB_CLO_PRC, CR_PROD_CNT_IL, scaller, logistic,
+0,734108754
+'''
